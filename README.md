@@ -2010,3 +2010,4 @@ $ trivy image --reset
 
 [Teppei Fukuda](https://github.com/knqyf263) (knqyf263)
 # external-secret
+# github-blueprint
