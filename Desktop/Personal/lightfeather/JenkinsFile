@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCOUNT_ID = "992382778146"
+        AWS_REGION = "us-east-1"
+        REPO_FRONTEND = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/frontend"
+        REPO_BACKEND = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/backend"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/<your-username>/<your-repo>.git'
+            }
+        }
+
+        stage('Build Frontend and Backend Docker Images') {
+            steps {
+                sh '''
+                cd backend
+                docker build -t backend .
+                docker tag backend:latest $REPO_BACKEND:latest
+
+                cd ../frontend
+                docker build -t frontend .
+                docker tag frontend:latest $REPO_FRONTEND:latest
+                '''
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                '''
+            }
+        }
+
+        stage('Push Images') {
+            steps {
+                sh '''
+                docker push $REPO_BACKEND:latest
+                docker push $REPO_FRONTEND:latest
+                '''
+            }
+        }
+
+        stage('Terraform Deploy') {
+            steps {
+                sh '''
+                cd terraform
+                terraform init
+                terraform apply -auto-approve
+                '''
+            }
+        }
+    }
+}
